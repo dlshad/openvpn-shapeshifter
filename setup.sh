@@ -183,48 +183,39 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			exit
 			;;
 			4) 
-			if go version "go: command not found"; then
-				echo "Go lang is needed, you don't have Go installed"
-				read -p "Do you want to install Go lang? [y/n]: " -e -i n INSTALLGO
-			if [[ "$INSTALLGO" = 'y' ]]; then
-				read -n1 -r -p "Press any key to continue..."
-				if [[ "$OS" = 'debian' ]]; then
-					apt-get update
-					apt-get install -y git golang curl
-					mkdir ~/go
-					export GOPATH=~/go
-				else
-					# Else, the distro is CentOS
-					yum install epel-release -y
-					yum install golang curl -y
-					mkdir ~/go
-					export GOPATH=~/go
-
-				fi
-
-				
-				mkdir ~/go
-				export GOPATH=~/go
-			else 
 			echo ""
-				echo "Installation aborted!"
-				
-			read -p "You need to install shapeshifter-dispatcher (Pluggable transports) Do you want to proceed? [y/n]: " -e -i n INSTALLSHAPESHIFTERDISPATCHER
-			if [[ "$INSTALLSHAPESHIFTERDISPATCHER" = 'y' ]]; then
-				go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
+			if [[ -e /usr/bin/go ]]; then
+      				echo "Go lang is needed, you don't have Go installed"
+				read -p "Do you want to install Go lang? [y/n]: " -r -e -i INSTALLGO
+                			if [[ "$INSTALLGO" = 'y' ]]; then
+                			read -n1 -r -p "Press any key to continue..."
+                       				 if [[ "$OS" = 'debian' ]]; then
+                               				 apt-get update
+                               				 apt-get install -y git golang curl
+                               				 mkdir ~/go
+                             				 export GOPATH=~/go
+                       				 else
+                         			 # Else, the distro is CentOS
+                            				yum install epel-release -y
+                            				yum install golang curl -y
+                           				mkdir ~/go
+                            				export GOPATH=~/go
 
-			if go version "go version"; then
-			echo "CentOS 5 is too old and not supported"
-
-			if [[ -e /etc/openvpn/server.conf ]]; then
-			while :
-			do
-
-			echo ""
-                        echo "Which port are you going to use for Obfs2 to listen to?"
-			read -p "Obfs2 port: " -e -i port OBFSPORT
-			echo "bin/shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -o$PORT"
-			bin/shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -o$PORT
+                        			fi
+                			else
+                       				echo ""
+                        			echo "Installation aborted!"
+                 	fi
+				elif [[ -e ~/go/pkg/linux_arm64/golang.org/x/net/proxy.a ]]; then
+        				echo "You need to install shapeshifter-dispatcher (Pluggable transports)"
+        				read -p -r "Do you want to proceed? [y/n]: " -e -i INSTALLSHAPESHIFTERDISPATCHER
+                				if [[ "$INSTALLSHAPESHIFTERDISPATCHER" = 'y' ]]; then
+                        				go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
+                				else
+                        				echo ""
+                        				echo "Installation aborted!"
+						fi
+			fi
 			
 			5) exit;;
 		esac
