@@ -3,7 +3,7 @@
 # This script will work on Debian, Ubuntu, CentOS and probably other distros
 # Ability to enable obfuscation was added to the script to help users suffering from DPI censorship
 #Credits: Thanks to https://github.com/Nyr/openvpn-install for the orignal openvpn-install script which
-#this script was built based on it and OperatorFoundation for shapeshifter-dispatcher 
+#this script was built based on it and OperatorFoundation for shapeshifter-dispatcher
 
 
 # Detect Debian users running the script with "sh" instead of bash
@@ -168,7 +168,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			;;
 			4)
                         if [[ -e /usr/bin/go ]]; then
-				read -n1 -r -p "It looks like you have Go already installed, press anykey to install shapeshifter-dispatcher (Pluggable transport)" 
+				read -n1 -r -p "It looks like you have Go already installed, press anykey to install shapeshifter-dispatcher (Pluggable transport)"
 				#read -p "It looks like you have Go already installed, do you want to remove it? [y/n]: " -e -i n REMOVEGO
 					if [[ -e /bin/shapeshifter-dispatcher ]]; then
 						read -p "It looks like you have shapeshifter-dispatcher already installed, do you want to remove it? [y/n]: " -e -i n REMOVEGO
@@ -230,6 +230,8 @@ else
 	echo "What port do you want for OpenVPN?"
 	read -p "Port: " -e -i 1194 PORT
 	echo ""
+	echo "What port do you want for shapeshifter-dispatcher (obfuscation)?"
+	read -p "Port" -e -i 5743 OBFSPORT
 	echo "What DNS do you want to use with the VPN?"
 	echo "   1) Current system resolvers"
 	echo "   2) Google"
@@ -247,11 +249,18 @@ else
 	read -n1 -r -p "Press any key to continue..."
 		if [[ "$OS" = 'debian' ]]; then
 		apt-get update
-		apt-get install openvpn iptables openssl ca-certificates -y
+		apt-get install openvpn iptables openssl ca-certificates git golang curl -y
+		mkdir ~/go
+		export GOPATH=~/go
+		go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
+
 	else
 		# Else, the distro is CentOS
 		yum install epel-release -y
-		yum install openvpn iptables openssl wget ca-certificates -y
+		yum install openvpn iptables openssl wget ca-certificates golang curl -y
+		mkdir ~/go
+		export GOPATH=~/go
+		go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
 	fi
 	# An old version of easy-rsa was available by default in some openvpn packages
 	if [[ -d /etc/openvpn/easy-rsa/ ]]; then
@@ -295,13 +304,13 @@ ifconfig-pool-persist ipp.txt" > /etc/openvpn/server.conf
 	echo 'push "redirect-gateway def1 bypass-dhcp"' >> /etc/openvpn/server.conf
 	# DNS
 	case $DNS in
-		1) 
+		1)
 		# Obtain the resolvers from resolv.conf and use them for OpenVPN
 		grep -v '#' /etc/resolv.conf | grep 'nameserver' | grep -E -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | while read line; do
 			echo "push \"dhcp-option DNS $line\"" >> /etc/openvpn/server.conf
 		done
 		;;
-		2) 
+		2)
 		echo 'push "dhcp-option DNS 8.8.8.8"' >> /etc/openvpn/server.conf
 		echo 'push "dhcp-option DNS 8.8.4.4"' >> /etc/openvpn/server.conf
 		;;
@@ -309,14 +318,14 @@ ifconfig-pool-persist ipp.txt" > /etc/openvpn/server.conf
 		echo 'push "dhcp-option DNS 208.67.222.222"' >> /etc/openvpn/server.conf
 		echo 'push "dhcp-option DNS 208.67.220.220"' >> /etc/openvpn/server.conf
 		;;
-		4) 
+		4)
 		echo 'push "dhcp-option DNS 129.250.35.250"' >> /etc/openvpn/server.conf
 		echo 'push "dhcp-option DNS 129.250.35.251"' >> /etc/openvpn/server.conf
 		;;
-		5) 
+		5)
 		echo 'push "dhcp-option DNS 74.82.42.42"' >> /etc/openvpn/server.conf
 		;;
-		6) 
+		6)
 		echo 'push "dhcp-option DNS 64.6.64.6"' >> /etc/openvpn/server.conf
 		echo 'push "dhcp-option DNS 64.6.65.6"' >> /etc/openvpn/server.conf
 		;;
@@ -346,8 +355,10 @@ crl-verify crl.pem" >> /etc/openvpn/server.conf
 		# the default port. Using both permanent and not permanent rules to
 		# avoid a firewalld reload.
 		firewall-cmd --zone=public --add-port=$PORT/tcp
+		firewall-cmd --zone=public --add-port=$OBFSPORT/tcp
 		firewall-cmd --zone=trusted --add-source=10.8.0.0/24
 		firewall-cmd --permanent --zone=public --add-port=$PORT/tcp
+		firewall-cmd --permanent --zone=public --add-port=$OBFSPORT/tcp
 		firewall-cmd --permanent --zone=trusted --add-source=10.8.0.0/24
 	fi
 	if iptables -L -n | grep -qE 'REJECT|DROP'; then
@@ -355,9 +366,11 @@ crl-verify crl.pem" >> /etc/openvpn/server.conf
 		# Not the best approach but I can't think of other and this shouldn't
 		# cause problems.
 		iptables -I INPUT -p tcp --dport $PORT -j ACCEPT
+		iptables -I INPUT -p tcp --dport $OBFSPORT -j ACCEPT
 		iptables -I FORWARD -s 10.8.0.0/24 -j ACCEPT
 		iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
 		sed -i "1 a\iptables -I INPUT -p tcp --dport $PORT -j ACCEPT" $RCLOCAL
+		sed -i "1 a\iptables -I INPUT -p tcp --dport $OBFSPORT -j ACCEPT" $RCLOCAL
 		sed -i "1 a\iptables -I FORWARD -s 10.8.0.0/24 -j ACCEPT" $RCLOCAL
 		sed -i "1 a\iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT" $RCLOCAL
 	fi
@@ -370,6 +383,7 @@ crl-verify crl.pem" >> /etc/openvpn/server.conf
 					yum install policycoreutils-python -y
 				fi
 				semanage port -a -t openvpn_port_t -p tcp $PORT
+				semanage port -a -t openvpn_port_t -p tcp $OBFSPORT
 			fi
 		fi
 	fi
@@ -390,6 +404,9 @@ crl-verify crl.pem" >> /etc/openvpn/server.conf
 			chkconfig openvpn on
 		fi
 	fi
+	#Running shapeshifter-dispatcher in the background
+	shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT
+	echo "shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT" >> /etc/rc.local
 	# Try to detect a NATed connection and ask about it to potential LowEndSpirit users
 	EXTERNALIP=$(wget -qO- ipv4.icanhazip.com)
 	if [[ "$IP" != "$EXTERNALIP" ]]; then
@@ -409,7 +426,8 @@ dev tun
 proto tcp
 sndbuf 0
 rcvbuf 0
-remote $IP $PORT
+remote 127.0.0.1
+Port 1234
 resolv-retry infinite
 nobind
 persist-key
@@ -427,4 +445,7 @@ verb 3" > /etc/openvpn/client-common.txt
 	echo ""
 	echo "Your client configuration is available at" ~/"$CLIENT.ovpn"
 	echo "If you want to add more clients, you simply need to run this script another time!"
+	echo "You have to install OpenVPN, Golang and shapeshifter-dispatcher on the client to be able to use it!"
+	echo "Then you have to run the followng command on the client side before establishing the openvpn connection:"
+	echo "shapeshifter-dispatcher -client -transparent -ptversion 2 -transports obfs2 -state state -target $IP:$OBFSPORT"
 fi
