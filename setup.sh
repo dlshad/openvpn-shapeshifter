@@ -58,22 +58,6 @@ newclient () {
 	echo "</tls-auth>" >> ~/$1.ovpn
 }
 
-newobfsclient () {
-	# Generates the custom obfsclient.ovpn
-	cp /etc/openvpn/obfsclient-common.txt ~/$11.ovpn
-	echo "<ca>" >> ~/$11.ovpn
-	cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/$11.ovpn
-	echo "</ca>" >> ~/$11.ovpn
-	echo "<cert>" >> ~/$11.ovpn
-	cat /etc/openvpn/easy-rsa/pki/issued/$11.crt >> ~/$11.ovpn
-	echo "</cert>" >> ~/$11.ovpn
-	echo "<key>" >> ~/$11.ovpn
-	cat /etc/openvpn/easy-rsa/pki/private/$11.key >> ~/$11.ovpn
-	echo "</key>" >> ~/$11.ovpn
-	echo "<tls-auth>" >> ~/$11.ovpn
-	cat /etc/openvpn/ta.key >> ~/$11.ovpn
-	echo "</tls-auth>" >> ~/$11.ovpn
-}
 
 # Try to get our IP from the system and fallback to the Internet.
 # I do this to make the script compatible with NATed servers (lowendspirit.com)
@@ -93,11 +77,11 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 		echo "   1) Add a cert for a new user"
 		echo "   2) Revoke existing user cert"
 		echo "   3) Remove OpenVPN"
-		echo "   4) Enable pluggable transport for a client"
-		echo "   5) Exit" 
+		echo "   4) Install pluggable transport"
+		echo "   5) Exit"
 		read -p "Select an option [1-5]: " option
 		case $option in
-			1) 
+			1)
 			echo ""
 			echo "Tell me a name for the client cert"
 			echo "Please, use one word only, no special characters"
@@ -142,7 +126,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			echo "Certificate for client $CLIENT revoked"
 			exit
 			;;
-			3) 
+			3)
 			echo ""
 			read -p "Do you really want to remove OpenVPN? [y/n]: " -e -i n REMOVE
 			if [[ "$REMOVE" = 'y' ]]; then
@@ -182,47 +166,58 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			fi
 			exit
 			;;
-			4) 
-			echo ""
-			if [[ -e /usr/bin/go ]]; then
-      				echo "Go lang is needed, you don't have Go installed"
-				read -p "Do you want to install Go lang? [y/n]: " -r -e -i INSTALLGO
-                			if [[ "$INSTALLGO" = 'y' ]]; then
-                			read -n1 -r -p "Press any key to continue..."
-                       				 if [[ "$OS" = 'debian' ]]; then
-                               				 apt-get update
-                               				 apt-get install -y git golang curl
-                               				 mkdir ~/go
-                             				 export GOPATH=~/go
-                       				 else
-                         			 # Else, the distro is CentOS
-                            				yum install epel-release -y
-                            				yum install golang curl -y
-                           				mkdir ~/go
-                            				export GOPATH=~/go
-
-                        			fi
-                			else
-                       				echo ""
-                        			echo "Installation aborted!"
-                 	fi
-				elif [[ -e ~/go/pkg/linux_arm64/golang.org/x/net/proxy.a ]]; then
-        				echo "You need to install shapeshifter-dispatcher (Pluggable transports)"
-        				read -p -r "Do you want to proceed? [y/n]: " -e -i INSTALLSHAPESHIFTERDISPATCHER
-                				if [[ "$INSTALLSHAPESHIFTERDISPATCHER" = 'y' ]]; then
-                        				go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
-                				else
-                        				echo ""
-                        				echo "Installation aborted!"
+			4)
+                        if [[ -e /usr/bin/go ]]; then
+				read -n1 -r -p "It looks like you have Go already installed, press anykey to install shapeshifter-dispatcher (Pluggable transport)" 
+				#read -p "It looks like you have Go already installed, do you want to remove it? [y/n]: " -e -i n REMOVEGO
+					if [[ -e /bin/shapeshifter-dispatcher ]]; then
+						read -p "It looks like you have shapeshifter-dispatcher already installed, do you want to remove it? [y/n]: " -e -i n REMOVEGO
+						echo ""
+						if [[ "$REMOVEGO" = 'y' ]]; then
+	                                               if [[ "$OS" = 'debian' ]]; then
+                                                             apt-get remove --purge -y golang
+							     apt autoremove -y
+                                                     	else
+                                                              yum remove golang -y
+                                                      	fi
+							rm -rf ~/go
+							echo "Go & Pluggable transport removed!"
+							exit 6
+						fi
+					fi
+			else
+			read -p "Do you want to enable Pluggable transports and install its software dependents? [y/n]: " -e -i n PLUGGABLETRANSPORT
+                		                if [[ "$PLUGGABLETRANSPORT" = 'y' ]]; then
+                                		        read -n1 -r -p "Press any key to continue..."
+                                                		 if [[ "$OS" = 'debian' ]]; then
+                                                        		apt-get update
+                                                         		apt-get install -y git golang curl
+                                                         		mkdir ~/go
+                                                         		export GOPATH=~/go
+                                                         		go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
+                                                 		else
+                                                 		# Else, the distro is CentOS
+                                                        		yum install epel-release -y
+                                                        		yum install golang curl -y
+                                                        		mkdir ~/go
+                                                        		export GOPATH=~/go
+                                                       			go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
+                                                		fi
+                                		else
+                                        		echo ""
+                                     			echo "Installation aborted!"
+							exit 6
 						fi
 			fi
-			
-			5) exit;;
+			exit
+			;;
+			5)exit;;
 		esac
 	done
+
 else
 	clear
-	echo 'Welcome to this quick OpenVPN "road warrior" installer'
+	echo "Welcome to this quick OpenVPN installer"
 	echo ""
 	# OpenVPN setup and first user creation
 	echo "I need to ask you a few questions before starting the setup"
