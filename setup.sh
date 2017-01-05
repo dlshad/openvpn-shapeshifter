@@ -1,11 +1,10 @@
 #!/bin/bash
-# Shell installer of obfuscated OpenVPN via shapeshifter-dispatcher pluggable transport for Debian and Ubuntu
+# Shell installer of obfuscated OpenVPN using shapeshifter-dispatcher via pluggable transports for Debian and Ubuntu
 # This script will work on Debian and Ubuntu
 # Ability to enable obfuscation was added to the script to help users suffering from DPI censorship for more information https://pluggabletransports.info
 #Credits: Thanks to https://github.com/Nyr/openvpn-install for the orignal openvpn-install script which
 #this script was built based on it and OperatorFoundation for shapeshifter-dispatcher
 #@dlshadothman
-
 
 # Detect Debian users running the script with "sh" instead of bash
 if readlink /proc/$$/exe | grep -qs "dash"; then
@@ -13,16 +12,18 @@ if readlink /proc/$$/exe | grep -qs "dash"; then
 	exit 1
 fi
 
+#Detect if the user is root or not, root is needed for this
 if [[ "$EUID" -ne 0 ]]; then
 	echo "Sorry, you need to run this as root"
 	exit 2
 fi
-
+#Check if TUN is enabled 
 if [[ ! -e /dev/net/tun ]]; then
 	echo "TUN is not available"
 	exit 3
 fi
 
+#This script works only with Debian and Ubuntu (Because I'm out of beer for now) for now! 
 if [[ -e /etc/debian_version ]]; then
 	OS=debian
 	GROUPNAME=nogroup
@@ -32,8 +33,8 @@ else
 	exit 5
 fi
 
-newclient () {
 	# Generates the custom client.ovpn
+newclient () {
 	cp /etc/openvpn/client-common.txt ~/$1.ovpn
 	echo "<ca>" >> ~/$1.ovpn
 	cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/$1.ovpn
