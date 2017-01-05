@@ -1,9 +1,10 @@
 #!/bin/bash
-# OpenVPN and shapeshifter-dispatcher pluggable transport installer for Debian, Ubuntu and CentOS
-# This script will work on Debian, Ubuntu, CentOS and probably other distros
-# Ability to enable obfuscation was added to the script to help users suffering from DPI censorship
+# Shell installer of obfuscated OpenVPN via shapeshifter-dispatcher pluggable transport for Debian and Ubuntu
+# This script will work on Debian and Ubuntu
+# Ability to enable obfuscation was added to the script to help users suffering from DPI censorship for more information https://pluggabletransports.info
 #Credits: Thanks to https://github.com/Nyr/openvpn-install for the orignal openvpn-install script which
 #this script was built based on it and OperatorFoundation for shapeshifter-dispatcher
+#@dlshadothman
 
 
 # Detect Debian users running the script with "sh" instead of bash
@@ -22,22 +23,12 @@ if [[ ! -e /dev/net/tun ]]; then
 	exit 3
 fi
 
-if grep -qs "CentOS release 5" "/etc/redhat-release"; then
-	echo "CentOS 5 is too old and not supported"
-	exit 4
-fi
 if [[ -e /etc/debian_version ]]; then
 	OS=debian
 	GROUPNAME=nogroup
 	RCLOCAL='/etc/rc.local'
-elif [[ -e /etc/centos-release || -e /etc/redhat-release ]]; then
-	OS=centos
-	GROUPNAME=nobody
-	RCLOCAL='/etc/rc.d/rc.local'
-	# Needed for CentOS 7
-	chmod +x /etc/rc.d/rc.local
 else
-	echo "Looks like you aren't running this installer on a Debian, Ubuntu or CentOS system"
+	echo "Looks like you aren't running this installer on a Debian or Ubuntu system"
 	exit 5
 fi
 
@@ -58,7 +49,6 @@ newclient () {
 	echo "</tls-auth>" >> ~/$1.ovpn
 }
 
-
 # Try to get our IP from the system and fallback to the Internet.
 # I do this to make the script compatible with NATed servers (lowendspirit.com)
 # and to avoid getting an IPv6.
@@ -66,20 +56,20 @@ IP=$(ip addr | grep 'inet' | grep -v inet6 | grep -vE '127\.[0-9]{1,3}\.[0-9]{1,
 if [[ "$IP" = "" ]]; then
 		IP=$(wget -qO- ipv4.icanhazip.com)
 fi
-
-if [[ -e /etc/openvpn/server.conf ]]; then
+#Check if OpenVPN server and pluggabletransport are installed
+if [[ -f /etc/openvpn/server.conf && -f /usr/bin/go && -f /bin/shapeshifter-dispatcher ]]; then
+		clear
 	while :
 	do
 	clear
-		echo "Looks like OpenVPN is already installed"
+		echo "Now you can run obfuscated openVPN"
 		echo ""
 		echo "What do you want to do?"
 		echo "   1) Add a cert for a new user"
 		echo "   2) Revoke existing user cert"
-		echo "   3) Remove OpenVPN"
-		echo "   4) Install pluggable transport"
-		echo "   5) Exit"
-		read -p "Select an option [1-5]: " option
+		echo "   3) Remove OpenVPN & pluggable transport"
+		echo "   4) Exit"
+		read -p "Select an option [1-4]: " option
 		case $option in
 			1)
 			echo ""
@@ -126,6 +116,7 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			echo "Certificate for client $CLIENT revoked"
 			exit
 			;;
+
 			3)
 			echo ""
 			read -p "Do you really want to remove OpenVPN? [y/n]: " -e -i n REMOVE
@@ -152,12 +143,11 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 					fi
 				fi
 				if [[ "$OS" = 'debian' ]]; then
-					apt-get remove --purge -y openvpn openvpn-blacklist
-				else
-					yum remove openvpn -y
+					apt-get remove --purge -y openvpn openvpn-blacklist golang
 				fi
 				rm -rf /etc/openvpn
 				rm -rf /usr/share/doc/openvpn*
+				rm -rf ~/go
 				echo ""
 				echo "OpenVPN removed!"
 			else
@@ -167,59 +157,16 @@ if [[ -e /etc/openvpn/server.conf ]]; then
 			exit
 			;;
 			4)
-                        if [[ -e /usr/bin/go ]]; then
-				read -n1 -r -p "It looks like you have Go already installed, press anykey to install shapeshifter-dispatcher (Pluggable transport)"
-				#read -p "It looks like you have Go already installed, do you want to remove it? [y/n]: " -e -i n REMOVEGO
-					if [[ -e /bin/shapeshifter-dispatcher ]]; then
-						read -p "It looks like you have shapeshifter-dispatcher already installed, do you want to remove it? [y/n]: " -e -i n REMOVEGO
-						echo ""
-						if [[ "$REMOVEGO" = 'y' ]]; then
-	                                               if [[ "$OS" = 'debian' ]]; then
-                                                             apt-get remove --purge -y golang
-							     apt autoremove -y
-                                                     	else
-                                                              yum remove golang -y
-                                                      	fi
-							rm -rf ~/go
-							echo "Go & Pluggable transport removed!"
-							exit 6
-						fi
-					fi
-			else
-			read -p "Do you want to enable Pluggable transports and install its software dependents? [y/n]: " -e -i n PLUGGABLETRANSPORT
-                		                if [[ "$PLUGGABLETRANSPORT" = 'y' ]]; then
-                                		        read -n1 -r -p "Press any key to continue..."
-                                                		 if [[ "$OS" = 'debian' ]]; then
-                                                        		apt-get update
-                                                         		apt-get install -y git golang curl
-                                                         		mkdir ~/go
-                                                         		export GOPATH=~/go
-                                                         		go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
-                                                 		else
-                                                 		# Else, the distro is CentOS
-                                                        		yum install epel-release -y
-                                                        		yum install golang curl -y
-                                                        		mkdir ~/go
-                                                        		export GOPATH=~/go
-                                                       			go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
-                                                		fi
-                                		else
-                                        		echo ""
-                                     			echo "Installation aborted!"
-							exit 6
-						fi
-			fi
-			exit
-			;;
-			5)exit;;
+			exit;;
+
 		esac
 	done
 
 else
 	clear
-	echo "Welcome to this quick OpenVPN installer"
+	echo "Welcome to this quick obfuscated OpenVPN installer"
 	echo ""
-	# OpenVPN setup and first user creation
+	# OpenVPN & pluggable transport setup and first user creation
 	echo "I need to ask you a few questions before starting the setup"
 	echo "You can leave the default options and just press enter if you are ok with them"
 	echo ""
@@ -227,12 +174,12 @@ else
 	echo "listening to."
 	read -p "IP address: " -e -i $IP IP
 	echo ""
-	echo "What port do you want for OpenVPN?"
+	echo "Which port are you going to use for for OpenVPN?"
 	read -p "Port: " -e -i 1194 PORT
 	echo ""
-	echo "What port do you want for shapeshifter-dispatcher (obfuscation)?"
+	echo "Which port are you going to use for for shapeshifter-dispatcher (obfuscation)?"
 	read -p "Port" -e -i 5743 OBFSPORT
-	echo "What DNS do you want to use with the VPN?"
+	echo "Which DNS do you want to use for the VPN?"
 	echo "   1) Current system resolvers"
 	echo "   2) Google"
 	echo "   3) OpenDNS"
@@ -241,23 +188,14 @@ else
 	echo "   6) Verisign"
 	read -p "DNS [1-6]: " -e -i 1 DNS
 	echo ""
-	echo "Finally, tell me your name for the client cert"
+	echo "Finally, enter the name of the client cert"
 	echo "Please, use one word only, no special characters"
 	read -p "Client name: " -e -i client CLIENT
 	echo ""
-	echo "Okay, that was all I needed. We are ready to setup your OpenVPN server now"
+	echo "Okay, this is all I needed. We are ready to setup your OpenVPN server now"
 	read -n1 -r -p "Press any key to continue..."
-		if [[ "$OS" = 'debian' ]]; then
 		apt-get update
 		apt-get install openvpn iptables openssl ca-certificates git golang curl -y
-		mkdir ~/go
-		export GOPATH=~/go
-		go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
-
-	else
-		# Else, the distro is CentOS
-		yum install epel-release -y
-		yum install openvpn iptables openssl wget ca-certificates golang curl -y
 		mkdir ~/go
 		export GOPATH=~/go
 		go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
@@ -378,35 +316,20 @@ crl-verify crl.pem" >> /etc/openvpn/server.conf
 	if hash sestatus 2>/dev/null; then
 		if sestatus | grep "Current mode" | grep -qs "enforcing"; then
 			if [[ "$PORT" != '1194' ]]; then
-				# semanage isn't available in CentOS 6 by default
-				if ! hash semanage 2>/dev/null; then
-					yum install policycoreutils-python -y
-				fi
 				semanage port -a -t openvpn_port_t -p tcp $PORT
 				semanage port -a -t openvpn_port_t -p tcp $OBFSPORT
 			fi
 		fi
 	fi
-	# And finally, restart OpenVPN
-	if [[ "$OS" = 'debian' ]]; then
-		# Little hack to check for systemd
-		if pgrep systemd-journal; then
-			systemctl restart openvpn@server.service
-		else
-			/etc/init.d/openvpn restart
-		fi
-	else
-		if pgrep systemd-journal; then
-			systemctl restart openvpn@server.service
-			systemctl enable openvpn@server.service
-		else
-			service openvpn restart
-			chkconfig openvpn on
-		fi
-	fi
-	#Running shapeshifter-dispatcher in the background
+	# And finally, start OpenVPN and shapeshifter-dispatcher
+	/etc/init.d/openvpn restart
+	cp ~/go/bin/shapeshifter-dispatcher /bin
+	chmod +x /bin/shapeshifter-dispatcher
 	shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT
-	echo "shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT" >> /etc/rc.local
+
+	#Running shapeshifter-dispatcher at the starup
+	echo "shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT" > /etc/rc.local
+
 	# Try to detect a NATed connection and ask about it to potential LowEndSpirit users
 	EXTERNALIP=$(wget -qO- ipv4.icanhazip.com)
 	if [[ "$IP" != "$EXTERNALIP" ]]; then
