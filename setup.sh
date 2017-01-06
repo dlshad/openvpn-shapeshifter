@@ -114,7 +114,7 @@ then
 			if [[ -f /etc/init.d/openvpn && -f /usr/bin/go && -f /bin/shapeshifter-dispatcher && -f /usr/bin/screen ]]; then
 				while :
 				do
-					screen shapeshifter-dispatcher -client -transparent -ptversion 2 -transports obfs2 -state state -target $IP:$OBFSPORT
+					screen ~/go/bin/shapeshifter-dispatcher -client -transparent -ptversion 2 -transports obfs2 -state state -target $IP:$OBFSPORT
 					read -n1 -r -p  "shapeshifter-dispatcher obfuscation is running now press anykey to run the openVPN connection"
 					openvpn --config $CLIENT.ovpn
 				done
@@ -374,13 +374,13 @@ crl-verify crl.pem" >> /etc/openvpn/server.conf
 	fi
 	# And finally, start OpenVPN and shapeshifter-dispatcher
 	/etc/init.d/openvpn restart
-	service openvpn start
-	chmod +x /bin/shapeshifter-dispatcher
-	cp ~/go/bin/shapeshifter-dispatcher /bin
-	screen shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT &
+	systemctl start openvpn@server
+	systemctl enable openvpn@server
+	chmod +x ~/go/bin/shapeshifter-dispatcher
+	~/go/bin/shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT &
 
 	#Running shapeshifter-dispatcher at the starup
-	echo "screen shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT" > /etc/rc.local
+	echo "~/go/bin/shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT" > /etc/rc.local
 
 	# Try to detect a NATed connection and ask about it to potential LowEndSpirit users
 	EXTERNALIP=$(wget -qO- ipv4.icanhazip.com)
@@ -444,4 +444,4 @@ verb 3" > /etc/openvpn/client-without-common.txt
 	echo "If you want to add more clients, you simply need to run this script another time!"
 	echo "You have to install OpenVPN, Golang and shapeshifter-dispatcher on the client to be able to use it!"
 	echo "Then you have to run the followng command on the client side before establishing the openvpn connection:"
-	echo "shapeshifter-dispatcher -client -transparent -ptversion 2 -transports obfs2 -state state -target $IP:$OBFSPORT"
+	echo "~/go/bin/shapeshifter-dispatcher -client -transparent -ptversion 2 -transports obfs2 -state state -target $IP:$OBFSPORT"
