@@ -1,10 +1,11 @@
 #!/bin/bash
-# Shell installer of obfuscated OpenVPN using shapeshifter-dispatcher via pluggable transports for Debian and Ubuntu
+# Shell installer of obfuscated OpenVPN via shapeshifter-dispatcher pluggable transport for Debian and Ubuntu
 # This script will work on Debian and Ubuntu
 # Ability to enable obfuscation was added to the script to help users suffering from DPI censorship for more information https://pluggabletransports.info
 #Credits: Thanks to https://github.com/Nyr/openvpn-install for the orignal openvpn-install script which
 #this script was built based on it and OperatorFoundation for shapeshifter-dispatcher
 #@dlshadothman
+
 
 # Detect Debian users running the script with "sh" instead of bash
 if readlink /proc/$$/exe | grep -qs "dash"; then
@@ -12,18 +13,16 @@ if readlink /proc/$$/exe | grep -qs "dash"; then
 	exit 1
 fi
 
-#Detect if the user is root or not, root is needed for this
 if [[ "$EUID" -ne 0 ]]; then
 	echo "Sorry, you need to run this as root"
 	exit 2
 fi
-#Check if TUN is enabled 
+
 if [[ ! -e /dev/net/tun ]]; then
 	echo "TUN is not available"
 	exit 3
 fi
 
-#This script works only with Debian and Ubuntu (Because I'm out of beer for now) for now! 
 if [[ -e /etc/debian_version ]]; then
 	OS=debian
 	GROUPNAME=nogroup
@@ -33,8 +32,8 @@ else
 	exit 5
 fi
 
-	# Generates the custom client.ovpn
 newclient () {
+	# Generates the custom client.ovpn
 	cp /etc/openvpn/client-common.txt ~/$1.ovpn
 	echo "<ca>" >> ~/$1.ovpn
 	cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/$1.ovpn
@@ -49,6 +48,23 @@ newclient () {
 	cat /etc/openvpn/ta.key >> ~/$1.ovpn
 	echo "</tls-auth>" >> ~/$1.ovpn
 }
+newclientwithout () {
+	# Generates the custom client-withoutobfs.ovpn
+	cp /etc/openvpn/client-without-common.txt ~/$1-withoutobfs.ovpn
+	echo "<ca>" >> ~/$1-withoutobfs.ovpn
+	echo "<ca>" >> ~/$1-withoutobfs.ovpn
+	cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/$1-withoutobfs.ovpn
+	echo "</ca>" >> ~/$1-withoutobfs.ovpn
+	echo "<cert>" >> ~/$1-withoutobfs.ovpn
+	cat /etc/openvpn/easy-rsa/pki/issued/$1.crt >> ~/$1-withoutobfs.ovpn
+	echo "</cert>" >> ~/$1-withoutobfs.ovpn
+	echo "<key>" >> ~/$1-withoutobfs.ovpn
+	cat /etc/openvpn/easy-rsa/pki/private/$1.key >> ~/$1-withoutobfs.ovpn
+	echo "</key>" >> ~/$1-withoutobfs.ovpn
+	echo "<tls-auth>" >> ~/$1-withoutobfs.ovpn
+	cat /etc/openvpn/ta.key >> ~/$1-withoutobfs.ovpn
+	echo "</tls-auth>" >> ~/$1-withoutobfs.ovpn
+}
 
 # Try to get our IP from the system and fallback to the Internet.
 # I do this to make the script compatible with NATed servers (lowendspirit.com)
@@ -58,7 +74,8 @@ if [[ "$IP" = "" ]]; then
 		IP=$(wget -qO- ipv4.icanhazip.com)
 fi
 #Check if OpenVPN server and pluggabletransport are installed
-if [[ -f /etc/openvpn/server.conf && -f /usr/bin/go && -f /bin/shapeshifter-dispatcher ]]; then
+if [[ -f /etc/openvpn/server.conf && -f /usr/bin/go && -f /bin/shapeshifter-dispatcher ]] 
+then
 		clear
 	while :
 	do
@@ -77,12 +94,44 @@ if [[ -f /etc/openvpn/server.conf && -f /usr/bin/go && -f /bin/shapeshifter-disp
 			echo "Tell me a name for the client cert"
 			echo "Please, use one word only, no special characters"
 			read -p "Client name: " -e -i client CLIENT
+			read -p "Which port are you using for obfuscation: " -e -i 5743 OBFSPORT
 			cd /etc/openvpn/easy-rsa/
 			./easyrsa build-client-full $CLIENT nopass
 			# Generates the custom client.ovpn
 			newclient "$CLIENT"
+			newclientwithout "$CLIENT"
+			clear
+			
+			# Generate the custom bash file to setup the client
+			echo "#!/bin/bash
+			# Shell installer of obfuscated OpenVPN via shapeshifter-dispatcher pluggable transport client, for Debian and Ubuntu
+			# This script will work on Debian and Ubuntu
+			# Ability to enable obfuscation was added to the script to help users suffering from DPI censorship for more information https://pluggabletransports.info
+			#Credits: Thanks to https://github.com/Nyr/openvpn-install for the orignal openvpn-install script which
+			#this script was built based on it and OperatorFoundation for shapeshifter-dispatcher
+			#@dlshadothman
+
+			if [[ -f /etc/init.d/openvpn && -f /usr/bin/go && -f /bin/shapeshifter-dispatcher && -f /usr/bin/screen ]]; then
+				while :
+				do
+					screen shapeshifter-dispatcher -client -transparent -ptversion 2 -transports obfs2 -state state -target $IP:$OBFSPORT
+					read -n1 -r -p  "shapeshifter-dispatcher obfuscation is running now press anykey to run the openVPN connection"
+					openvpn --config $CLIENT.ovpn
+				done
+			else
+				read -n1 -r -p "You dont have the needed software to run the VPN connection, Press any key to install them..."
+					apt-get update
+					apt-get install openvpn git golang curl screen -y
+					mkdir ~/go
+					export GOPATH=~/go
+					go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
+			fi" > ~/$CLIENT.sh
+			
 			echo ""
 			echo "Client $CLIENT added, configuration is available at" ~/"$CLIENT.ovpn"
+			echo "Client $CLIENT added, configuration for OpenVPN without obfuscation is available at" ~/"$CLIENTwithoutobfs.ovpn"
+			echo "An automated bash file for - Linux/Ubuntu or Debian based client is available at ~/$CLIENT.sh"
+			
 			exit
 			;;
 			2)
@@ -144,13 +193,14 @@ if [[ -f /etc/openvpn/server.conf && -f /usr/bin/go && -f /bin/shapeshifter-disp
 					fi
 				fi
 				if [[ "$OS" = 'debian' ]]; then
-					apt-get remove --purge -y openvpn openvpn-blacklist golang
+					apt-get remove --purge -y openvpn openvpn-blacklist golang screen
+					apt autoremove -y
 				fi
 				rm -rf /etc/openvpn
 				rm -rf /usr/share/doc/openvpn*
 				rm -rf ~/go
 				echo ""
-				echo "OpenVPN removed!"
+				echo "OpenVPN, Golang and shapeshifter-dispatcher removed!"
 			else
 				echo ""
 				echo "Removal aborted!"
@@ -179,7 +229,7 @@ else
 	read -p "Port: " -e -i 1194 PORT
 	echo ""
 	echo "Which port are you going to use for for shapeshifter-dispatcher (obfuscation)?"
-	read -p "Port" -e -i 5743 OBFSPORT
+	read -p "Port: " -e -i 5743 OBFSPORT
 	echo "Which DNS do you want to use for the VPN?"
 	echo "   1) Current system resolvers"
 	echo "   2) Google"
@@ -196,7 +246,7 @@ else
 	echo "Okay, this is all I needed. We are ready to setup your OpenVPN server now"
 	read -n1 -r -p "Press any key to continue..."
 		apt-get update
-		apt-get install openvpn iptables openssl ca-certificates git golang curl -y
+		apt-get install openvpn iptables openssl ca-certificates git golang curl screen -y
 		mkdir ~/go
 		export GOPATH=~/go
 		go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
@@ -324,12 +374,13 @@ crl-verify crl.pem" >> /etc/openvpn/server.conf
 	fi
 	# And finally, start OpenVPN and shapeshifter-dispatcher
 	/etc/init.d/openvpn restart
-	cp ~/go/bin/shapeshifter-dispatcher /bin
+	service openvpn start
 	chmod +x /bin/shapeshifter-dispatcher
-	shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT
+	cp ~/go/bin/shapeshifter-dispatcher /bin
+	screen shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT &
 
 	#Running shapeshifter-dispatcher at the starup
-	echo "shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT" > /etc/rc.local
+	echo "screen shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT" > /etc/rc.local
 
 	# Try to detect a NATed connection and ask about it to potential LowEndSpirit users
 	EXTERNALIP=$(wget -qO- ipv4.icanhazip.com)
@@ -351,7 +402,7 @@ proto tcp
 sndbuf 0
 rcvbuf 0
 remote 127.0.0.1
-Port 1234
+port 1234
 resolv-retry infinite
 nobind
 persist-key
@@ -362,8 +413,30 @@ comp-lzo
 setenv opt block-outside-dns
 key-direction 1
 verb 3" > /etc/openvpn/client-common.txt
-	# Generates the custom client.ovpn
+
+	# client-without-common.txt is created so we have a template to add further users later
+	echo "client
+dev tun
+proto tcp
+sndbuf 0
+rcvbuf 0
+remote $IP
+port $PORT
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+remote-cert-tls server
+cipher AES-256-CBC
+comp-lzo
+setenv opt block-outside-dns
+key-direction 1
+verb 3" > /etc/openvpn/client-without-common.txt
+
+	# Generate the custom client.ovpn
 	newclient "$CLIENT"
+	newclientwithout "$CLIENT"
+	
 	echo ""
 	echo "Finished!"
 	echo ""
@@ -372,4 +445,3 @@ verb 3" > /etc/openvpn/client-common.txt
 	echo "You have to install OpenVPN, Golang and shapeshifter-dispatcher on the client to be able to use it!"
 	echo "Then you have to run the followng command on the client side before establishing the openvpn connection:"
 	echo "shapeshifter-dispatcher -client -transparent -ptversion 2 -transports obfs2 -state state -target $IP:$OBFSPORT"
-fi
