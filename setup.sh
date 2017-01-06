@@ -114,7 +114,8 @@ then
 			if [[ -f /etc/init.d/openvpn && -f /usr/bin/go && -f /bin/shapeshifter-dispatcher && -f /usr/bin/screen ]]; then
 				while :
 				do
-					screen ~/go/bin/shapeshifter-dispatcher -client -transparent -ptversion 2 -transports obfs2 -state state -target $IP:$OBFSPORT
+					 ~/go/bin/shapeshifter-dispatcher -client -transparent -ptversion 2 -transports obfs2 -state state -target $IP:$OBFSPORT &
+					disown
 					read -n1 -r -p  "shapeshifter-dispatcher obfuscation is running now press anykey to run the openVPN connection"
 					openvpn --config $CLIENT.ovpn
 				done
@@ -378,7 +379,7 @@ crl-verify crl.pem" >> /etc/openvpn/server.conf
 	systemctl enable openvpn@server
 	chmod +x ~/go/bin/shapeshifter-dispatcher
 	~/go/bin/shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT &
-
+	disown
 	#Running shapeshifter-dispatcher at the starup
 	echo "~/go/bin/shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT" > /etc/rc.local
 
