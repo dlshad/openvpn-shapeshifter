@@ -378,8 +378,7 @@ crl-verify crl.pem" >> /etc/openvpn/server.conf
 	systemctl start openvpn@server
 	systemctl enable openvpn@server
 	chmod +x ~/go/bin/shapeshifter-dispatcher
-	~/go/bin/shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT &
-	disown
+	~/go/bin/shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT & disown
 	#Running shapeshifter-dispatcher at the starup
 	echo "~/go/bin/shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT" > /etc/rc.local
 
