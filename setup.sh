@@ -111,7 +111,7 @@ then
 			#this script was built based on it and OperatorFoundation for shapeshifter-dispatcher
 			#@dlshadothman
 
-			if [[ -f /etc/init.d/openvpn && -f /usr/bin/go && -f /bin/shapeshifter-dispatcher && -f /usr/bin/screen ]]; then
+			if [[ -f /etc/init.d/openvpn && -f /usr/bin/go && -f /bin/shapeshifter-dispatcher ]]; then
 				while :
 				do
 					 ~/go/bin/shapeshifter-dispatcher -client -transparent -ptversion 2 -transports obfs2 -state state -target $IP:$OBFSPORT &
@@ -122,7 +122,7 @@ then
 			else
 				read -n1 -r -p "You dont have the needed software to run the VPN connection, Press any key to install them..."
 					apt-get update
-					apt-get install openvpn git golang curl screen -y
+					apt-get install openvpn git golang curl -y
 					mkdir ~/go
 					export GOPATH=~/go
 					go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
@@ -194,12 +194,15 @@ then
 					fi
 				fi
 				if [[ "$OS" = 'debian' ]]; then
-					apt-get remove --purge -y openvpn openvpn-blacklist golang screen
+					apt-get remove --purge -y openvpn openvpn-blacklist golang 
 					apt autoremove -y
 				fi
+				/etc/init.d/dispatcher stop
 				rm -rf /etc/openvpn
 				rm -rf /usr/share/doc/openvpn*
 				rm -rf ~/go
+				rm /etc/init.d/dispatcher
+				sed -i.bak '/dispatcher/d' /etc/rc.local
 				echo ""
 				echo "OpenVPN, Golang and shapeshifter-dispatcher removed!"
 			else
@@ -247,10 +250,108 @@ else
 	echo "Okay, this is all I needed. We are ready to setup your OpenVPN server now"
 	read -n1 -r -p "Press any key to continue..."
 		apt-get update
-		apt-get install openvpn iptables openssl ca-certificates git golang curl screen -y
+		apt-get install openvpn iptables openssl ca-certificates git golang curl -y
 		mkdir ~/go
 		export GOPATH=~/go
 		go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
+		echo '#!/bin/sh
+		### BEGIN INIT INFO
+		# Provides:
+		# Required-Start:    $remote_fs $syslog
+		# Required-Stop:     $remote_fs $syslog
+		# Default-Start:     2 3 4 5
+		# Default-Stop:      0 1 6
+		# Short-Description: Start daemon at boot time
+		# Description:       Enable service provided by daemon.
+		### END INIT INFO
+
+		dir="/root/go" 
+		cmd="bin/shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-'$IP':'$OBFSPORT' -orport 127.0.0.1:'$PORT' &" 
+		user=""
+		name=`basename $0`
+		pid_file="/var/run/$name.pid"
+		stdout_log="/var/log/$name.log"
+		stderr_log="/var/log/$name.err"
+
+		get_pid() {
+ 		       cat "$pid_file"
+	       }
+
+	       is_running() {
+		       [ -f "$pid_file" ] && ps `get_pid` > /dev/null 2>&1
+	       }
+
+	       case "$1" in
+		       start)
+ 		      if is_running; then
+        		      echo "Already started"
+  		    else
+       		     echo "Starting $name"
+      	       cd "$dir"
+     	   if [ -z "$user" ]; then
+       	     sudo $cmd >> "$stdout_log" 2>> "$stderr_log" &
+      	  else
+      	      sudo -u "$user" $cmd >> "$stdout_log" 2>> "$stderr_log" &
+      	  fi
+      	  echo $! > "$pid_file"
+     	   if ! is_running; then
+       	     echo "Unable to start, see $stdout_log and $stderr_log"
+      	      exit 1
+      	  fi
+   	 fi
+  	  ;;
+  	  stop)
+   	 if is_running; then
+   	      echo -n "Stopping $name.."
+    	    kill `get_pid`
+    	    for i in {1..10}
+    	    do
+        	    if ! is_running; then
+          	      break
+       	     fi
+
+        	    echo -n "."
+       	     sleep 1
+      	  done
+      	  echo
+
+      	  if is_running; then
+      	      echo "Not stopped; may still be shutting down or shutdown may have failed"
+       	     exit 1
+       	 else
+        	    echo "Stopped"
+        	    if [ -f "$pid_file" ]; then
+        		    rm "$pid_file"
+       	     fi
+       	 fi
+  	  else
+    	      echo "Not running"
+  	  fi
+  	  ;;
+  	  restart)
+  	  $0 stop
+  	  if is_running; then
+  		echo "Unable to stop, will not attempt to start"
+  	      exit 1
+ 	   fi
+   	 $0 start
+ 	   ;;
+  	  status)
+   	 if is_running; then
+   	      echo "Running"
+   	 else
+   	      echo "Stopped"
+    	    exit 1
+   	 fi
+  	  ;;
+  	  *)
+  	  echo "Usage: $0 {start|stop|restart|status}"
+  	  exit 1
+  	  ;;
+	esac
+
+	exit 0' > /etc/init.d/dispatcher
+		chmod u+x /etc/init.d/dispatcher
 	fi
 	# An old version of easy-rsa was available by default in some openvpn packages
 	if [[ -d /etc/openvpn/easy-rsa/ ]]; then
@@ -339,7 +440,7 @@ crl-verify crl.pem" >> /etc/openvpn/server.conf
 	echo 1 > /proc/sys/net/ipv4/ip_forward
 	# Set NAT for the VPN subnet
 	iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP
-	sed -i "1 a\iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP" $RCLOCAL
+	sed -i "1 a\iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP" 
 	if pgrep firewalld; then
 		# We don't use --add-service=openvpn because that would only work with
 		# the default port. Using both permanent and not permanent rules to
@@ -377,10 +478,9 @@ crl-verify crl.pem" >> /etc/openvpn/server.conf
 	/etc/init.d/openvpn restart
 	systemctl start openvpn@server
 	systemctl enable openvpn@server
-	chmod +x ~/go/bin/shapeshifter-dispatcher
-	~/go/bin/shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT & disown
+	/etc/init.d/dispatcher start
 	#Running shapeshifter-dispatcher at the starup
-	echo "~/go/bin/shapeshifter-dispatcher -server -transparent -ptversion 2 -transports obfs2 -state state -bindaddr obfs2-$IP:$OBFSPORT -orport 127.0.0.1:$PORT" > /etc/rc.local
+	sed -i "13i /etc/init.d/dispatcher start" /etc/rc.local
 
 	# Try to detect a NATed connection and ask about it to potential LowEndSpirit users
 	EXTERNALIP=$(wget -qO- ipv4.icanhazip.com)
