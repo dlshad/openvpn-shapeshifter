@@ -535,7 +535,7 @@ verb 3" > /etc/openvpn/client-without-common.txt
 			mkdir ~/go
 			export GOPATH=~/go
 			go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
-	fi' > ~/etc/openvpn/client-bash-common.txt
+	fi' > /etc/openvpn/client-bash-common.txt
 
 	# Generate the custom client.ovpn
 	newclient "$CLIENT"
