@@ -66,6 +66,12 @@ newclientwithout () {
 	echo "</tls-auth>" >> ~/$1-withoutobfs.ovpn
 }
 
+newclientbash () {
+	# Generates the custom client-withoutobfs.ovpn
+	cp /etc/openvpn/client-bash-common.txt ~/$1.sh
+	sed -i 's/clientvpnfile/'$CLIENT'/g' ~/$1.sh
+}
+
 # Try to get our IP from the system and fallback to the Internet.
 # I do this to make the script compatible with NATed servers (lowendspirit.com)
 # and to avoid getting an IPv6.
@@ -94,40 +100,14 @@ then
 			echo "Tell me a name for the client cert"
 			echo "Please, use one word only, no special characters"
 			read -p "Client name: " -e -i client CLIENT
-			read -p "Which port are you using for obfuscation: " -e -i 5743 OBFSPORT
+			#read -p "Which port are you using for obfuscation: " -e -i 5743 OBFSPORT
 			cd /etc/openvpn/easy-rsa/
 			./easyrsa build-client-full $CLIENT nopass
 			# Generates the custom client.ovpn
 			newclient "$CLIENT"
 			newclientwithout "$CLIENT"
-			clear
-			
-			# Generate the custom bash file to setup the client
-			echo "#!/bin/bash
-			# Shell installer of obfuscated OpenVPN via shapeshifter-dispatcher pluggable transport client, for Debian and Ubuntu
-			# This script will work on Debian and Ubuntu
-			# Ability to enable obfuscation was added to the script to help users suffering from DPI censorship for more information https://pluggabletransports.info
-			#Credits: Thanks to https://github.com/Nyr/openvpn-install for the orignal openvpn-install script which
-			#this script was built based on it and OperatorFoundation for shapeshifter-dispatcher
-			#@dlshadothman
-
-			if [[ -f /etc/init.d/openvpn && -f /usr/bin/go && -f /bin/shapeshifter-dispatcher ]]; then
-				while :
-				do
-					 ~/go/bin/shapeshifter-dispatcher -client -transparent -ptversion 2 -transports obfs2 -state state -target $IP:$OBFSPORT &
-					disown
-					read -n1 -r -p  "shapeshifter-dispatcher obfuscation is running now press anykey to run the openVPN connection"
-					openvpn --config $CLIENT.ovpn
-				done
-			else
-				read -n1 -r -p "You dont have the needed software to run the VPN connection, Press any key to install them..."
-					apt-get update
-					apt-get install openvpn git golang curl -y
-					mkdir ~/go
-					export GOPATH=~/go
-					go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
-			fi" > ~/$CLIENT.sh
-			
+			newclientbash "$CLIENT"
+			clear			
 			echo ""
 			echo "Client $CLIENT added, configuration is available at" ~/"$CLIENT.ovpn"
 			echo "Client $CLIENT added, configuration for OpenVPN without obfuscation is available at" ~/"$CLIENTwithoutobfs.ovpn"
@@ -532,10 +512,35 @@ comp-lzo
 setenv opt block-outside-dns
 key-direction 1
 verb 3" > /etc/openvpn/client-without-common.txt
+	echo '#!/bin/bash
+	# Shell installer of obfuscated OpenVPN via shapeshifter-dispatcher pluggable transport client, for Debian and Ubuntu
+	# This script will work on Debian and Ubuntu
+	# Ability to enable obfuscation was added to the script to help users suffering from DPI censorship for more information https://pluggabletransports.info
+	#Credits: Thanks to https://github.com/Nyr/openvpn-install for the orignal openvpn-install script which
+	#this script was built based on it and OperatorFoundation for shapeshifter-dispatcher
+	#@dlshadothman
+
+	if [[ -f /etc/init.d/openvpn && -f /usr/bin/go && -f /bin/shapeshifter-dispatcher ]]; then
+		while :
+		do
+			~/go/bin/shapeshifter-dispatcher -client -transparent -ptversion 2 -transports obfs2 -state state -target '$IP':'$OBFSPORT' &
+			disown
+			read -n1 -r -p  "shapeshifter-dispatcher obfuscation is running now press anykey to run the openVPN connection"
+			openvpn --config clientvpnfile.ovpn
+		done
+	else
+		read -n1 -r -p "You dont have the needed software to run the VPN connection, Press any key to install them..."
+			apt-get update
+			apt-get install openvpn git golang curl -y
+			mkdir ~/go
+			export GOPATH=~/go
+			go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
+	fi' > ~/etc/openvpn/client-bash-common.txt
 
 	# Generate the custom client.ovpn
 	newclient "$CLIENT"
 	newclientwithout "$CLIENT"
+	newclientbash "$CLIENT"
 	
 	echo ""
 	echo "Finished!"
