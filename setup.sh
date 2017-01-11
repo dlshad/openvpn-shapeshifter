@@ -1,13 +1,12 @@
 #!/bin/bash
-# Shell installer of obfuscated OpenVPN via shapeshifter-dispatcher pluggable transport for Debian and Ubuntu
+# Shell installer of obfuscated OpenVPN via shapeshifter-dispatcher pluggable transport
 # This script will work on Debian and Ubuntu
 # Ability to enable obfuscation was added to the script to help users suffering from DPI censorship for more information https://pluggabletransports.info
-#Credits: Thanks to https://github.com/Nyr/openvpn-install for the orignal openvpn-install script which
-#this script was built based on it and OperatorFoundation for shapeshifter-dispatcher
-#@dlshadothman
+#Credits: Thanks to https://github.com/Nyr/openvpn-install for the orignal openvpn-install script which and OperatorFoundation for  the awesome shapeshifter-dispatcher.
+#By @dlshadothman https://github.com/dlshad 
 
 
-# Detect Debian users running the script with "sh" instead of bash
+# Detect if the user is running the script with "sh" instead of bash
 if readlink /proc/$$/exe | grep -qs "dash"; then
 	echo "This script needs to be run with bash, not sh"
 	exit 1
@@ -18,11 +17,13 @@ if [[ "$EUID" -ne 0 ]]; then
 	exit 2
 fi
 
+# Detect if the kernel supports TUN 
 if [[ ! -e /dev/net/tun ]]; then
-	echo "TUN is not available"
+	echo "TUN is not available read more about it here https://crybit.com/how-to-enablecheck-tuntap-module-in-vpsopenvz/"
 	exit 3
 fi
 
+# Detect if the user running the script on Debian or Ubuntu 
 if [[ -e /etc/debian_version ]]; then
 	OS=debian
 	GROUPNAME=nogroup
@@ -32,8 +33,8 @@ else
 	exit 5
 fi
 
+# Generates custom CLIENT.ovpn file
 newclient () {
-	# Generates the custom client.ovpn
 	cp /etc/openvpn/client-common.txt ~/$1.ovpn
 	echo "<ca>" >> ~/$1.ovpn
 	cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/$1.ovpn
@@ -48,8 +49,9 @@ newclient () {
 	cat /etc/openvpn/ta.key >> ~/$1.ovpn
 	echo "</tls-auth>" >> ~/$1.ovpn
 }
+
+# Generates custom CLIENT-withoutobfs.ovpn file
 newclientwithout () {
-	# Generates the custom client-withoutobfs.ovpn
 	cp /etc/openvpn/client-without-common.txt ~/$1-withoutobfs.ovpn
 	echo "<ca>" >> ~/$1-withoutobfs.ovpn
 	echo "<ca>" >> ~/$1-withoutobfs.ovpn
@@ -66,19 +68,18 @@ newclientwithout () {
 	echo "</tls-auth>" >> ~/$1-withoutobfs.ovpn
 }
 
+# Generates custom bash file installer for client CLIENT.sh
 newclientbash () {
-	# Generates the custom client-withoutobfs.ovpn
 	cp /etc/openvpn/client-bash-common.txt ~/$1.sh
 	sed -i 's/clientvpnfile/'$CLIENT'/g' ~/$1.sh
 }
 
-# Try to get our IP from the system and fallback to the Internet.
-# I do this to make the script compatible with NATed servers (lowendspirit.com)
-# and to avoid getting an IPv6.
+# Obtaining the public IP v4 address of the server 
 IP=$(ip addr | grep 'inet' | grep -v inet6 | grep -vE '127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | grep -o -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | head -1)
 if [[ "$IP" = "" ]]; then
 		IP=$(wget -qO- ipv4.icanhazip.com)
 fi
+
 #Check if OpenVPN server and pluggabletransport are installed
 if [[ -f /etc/openvpn/server.conf && -f /usr/bin/go && -f /bin/shapeshifter-dispatcher ]] 
 then
@@ -100,24 +101,24 @@ then
 			echo "Tell me a name for the client cert"
 			echo "Please, use one word only, no special characters"
 			read -p "Client name: " -e -i client CLIENT
-			#read -p "Which port are you using for obfuscation: " -e -i 5743 OBFSPORT
 			cd /etc/openvpn/easy-rsa/
 			./easyrsa build-client-full $CLIENT nopass
-			# Generates the custom client.ovpn
+			
+			# Generates custom CLIENT.ovpn file
 			newclient "$CLIENT"
+			# Generates custom CLIENT-withoutobfs.ovpn file
 			newclientwithout "$CLIENT"
+			# Generates custom bash file installer for client CLIENT.sh
 			newclientbash "$CLIENT"
+			
 			clear			
 			echo ""
 			echo "Client $CLIENT added, configuration is available at" ~/"$CLIENT.ovpn"
-			echo "Client $CLIENT added, configuration for OpenVPN without obfuscation is available at" ~/"$CLIENTwithoutobfs.ovpn"
-			echo "An automated bash file for - Linux/Ubuntu or Debian based client is available at ~/$CLIENT.sh"
-			
+			echo "Client $CLIENT added, configuration for OpenVPN without obfuscation is available at" ~/"$CLIENT-withoutobfs.ovpn"
+			echo "We already created a bash file for your client to run in order to setup and run openvpn-dispatcher you can find it here" ~/"$CLIENT.sh"			
 			exit
 			;;
 			2)
-			# This option could be documented a bit better and maybe even be simplimplified
-			# ...but what can I say, I want some sleep too
 			NUMBEROFCLIENTS=$(tail -n +2 /etc/openvpn/easy-rsa/pki/index.txt | grep -c "^V")
 			if [[ "$NUMBEROFCLIENTS" = '0' ]]; then
 				echo ""
@@ -141,6 +142,7 @@ then
 			rm -rf pki/issued/$CLIENT.crt
 			rm -rf /etc/openvpn/crl.pem
 			cp /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn/crl.pem
+			
 			# CRL is read with each client connection, when OpenVPN is dropped to nobody
 			chown nobody:$GROUPNAME /etc/openvpn/crl.pem
 			echo ""
@@ -181,7 +183,9 @@ then
 				rm -rf /etc/openvpn
 				rm -rf /usr/share/doc/openvpn*
 				rm -rf ~/go
+				#Remove dispatcher service
 				rm /etc/init.d/dispatcher
+				#Remove dispatcher from system startup
 				sed -i.bak '/dispatcher/d' /etc/rc.local
 				echo ""
 				echo "OpenVPN, Golang and shapeshifter-dispatcher removed!"
@@ -202,11 +206,11 @@ else
 	echo "Welcome to this quick obfuscated OpenVPN installer"
 	echo ""
 	# OpenVPN & pluggable transport setup and first user creation
-	echo "I need to ask you a few questions before starting the setup"
+	echo "I need to ask you few questions before starting the setup"
 	echo "You can leave the default options and just press enter if you are ok with them"
 	echo ""
 	echo "First I need to know the IPv4 address of the network interface you want OpenVPN"
-	echo "listening to."
+	echo "to listen. Please note that the script will obtain the public IP address of your server "
 	read -p "IP address: " -e -i $IP IP
 	echo ""
 	echo "Which port are you going to use for for OpenVPN?"
@@ -227,13 +231,13 @@ else
 	echo "Please, use one word only, no special characters"
 	read -p "Client name: " -e -i client CLIENT
 	echo ""
-	echo "Okay, this is all I needed. We are ready to setup your OpenVPN server now"
-	read -n1 -r -p "Press any key to continue..."
+	echo "Okay, this is all what I needed. We are ready to setup your OpenVPN server now"
 		apt-get update
 		apt-get install openvpn iptables openssl ca-certificates git golang curl -y
 		mkdir ~/go
 		export GOPATH=~/go
 		go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
+		#configuring dispatcher as server
 		echo '#!/bin/sh
 		### BEGIN INIT INFO
 		# Provides:
@@ -331,6 +335,7 @@ else
 	esac
 
 	exit 0' > /etc/init.d/dispatcher
+	#Making /etc/init.d/dispatcher an executable file 
 		chmod u+x /etc/init.d/dispatcher
 	fi
 	# An old version of easy-rsa was available by default in some openvpn packages
@@ -454,12 +459,12 @@ crl-verify crl.pem" >> /etc/openvpn/server.conf
 			fi
 		fi
 	fi
-	# And finally, start OpenVPN and shapeshifter-dispatcher
+	# And finally, start+enable OpenVPN and shapeshifter-dispatcher services
 	/etc/init.d/openvpn restart
 	systemctl start openvpn@server
 	systemctl enable openvpn@server
 	/etc/init.d/dispatcher start
-	#Running shapeshifter-dispatcher at the starup
+	#Running shapeshifter-dispatcher at the system starup
 	sed -i "13i /etc/init.d/dispatcher start" /etc/rc.local
 
 	# Try to detect a NATed connection and ask about it to potential LowEndSpirit users
@@ -512,6 +517,8 @@ comp-lzo
 setenv opt block-outside-dns
 key-direction 1
 verb 3" > /etc/openvpn/client-without-common.txt
+	# client-bash-common.txt is created so we have a template to add further users later
+	
 	echo '#!/bin/bash
 	# Shell installer of obfuscated OpenVPN via shapeshifter-dispatcher pluggable transport client, for Debian and Ubuntu
 	# This script will work on Debian and Ubuntu
@@ -537,15 +544,19 @@ verb 3" > /etc/openvpn/client-without-common.txt
 			go get -u github.com/OperatorFoundation/shapeshifter-dispatcher/shapeshifter-dispatcher
 	fi' > /etc/openvpn/client-bash-common.txt
 
-	# Generate the custom client.ovpn
+	# Generates custom CLIENT.ovpn file
 	newclient "$CLIENT"
+	# Generates custom CLIENT-withoutobfs.ovpn file
 	newclientwithout "$CLIENT"
+	# Generates custom bash file installer for client CLIENT.sh
 	newclientbash "$CLIENT"
 	
 	echo ""
 	echo "Finished!"
 	echo ""
-	echo "Your client configuration is available at" ~/"$CLIENT.ovpn"
+	echo "Client $CLIENT added, configuration is available at" ~/"$CLIENT.ovpn"
+	echo "Client $CLIENT added, configuration for OpenVPN without obfuscation is available at" ~/"$CLIENT-withoutobfs.ovpn"
+	echo "We already created a bash file for your client to run in order to setup and run openvpn-dispatcher you can find it here" ~/"$CLIENT.sh"
 	echo "If you want to add more clients, you simply need to run this script another time!"
 	echo "You have to install OpenVPN, Golang and shapeshifter-dispatcher on the client to be able to use it!"
 	echo "Then you have to run the followng command on the client side before establishing the openvpn connection:"
