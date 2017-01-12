@@ -23,8 +23,11 @@ Run the following command in your Ubuntu or Debian server:
 Linode, Digitalocean and AWS.
 
 ###Credits
+
 The Operator Foundation for Shapeshifter Dispatcher
+
 NYR https://github.com/Nyr for the original OpenVPN Bash installer 
+
 OpenVPN for OpenVPN!
 
 ###Do you need help?
