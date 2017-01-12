@@ -16,6 +16,7 @@ can use both!  OpenVPN is the VPN provider, Dispatcher is the command line proxy
 
 ###Installation
 Run the following command in your Ubuntu or Debian server:
+
 `wget https://git.io/vMgOE -O setup.sh && bash setup.sh`
 
 ###Tested on
