@@ -1,8 +1,9 @@
 openvpn-shapeshifter Installer for Ubuntu & Debian servers.
 
-This script will automatically guide you to install and configure your OpenVPN server with Shapeshifter Dispatcher (obfuscation) which will allow you to bypass the DPI blockage on OpenVPN.
-This setup will offer the users the freedom to choose between regular OpenVPN connection or obfuscated one, they actually can use both! 
-OpenVPN is the VPN provider, Dispatcher is the command line proxy tool which utilize Shapeshifter which is a protocol shapeshifting technology that will obfuscate the transformed data between the user and the server.
+This script will automatically guide you to install and configure your OpenVPN server with Shapeshifter Dispatcher
+(obfuscation) which will allow you to bypass the DPI blockage on OpenVPN.
+This setup will offer the users the freedom to choose between regular OpenVPN connection or obfuscated one, they actually
+can use both!  OpenVPN is the VPN provider, Dispatcher is the command line proxy tool which utilize Shapeshifter which is a protocol shapeshifting technology that will obfuscate the transformed data between the user and the server.
 
 How this thing work?
 
