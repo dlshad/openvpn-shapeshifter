@@ -20,3 +20,9 @@ Run the following command in your Ubuntu or Debian server:
 
 ###Tested on
 Linode, Digitalocean and AWS.
+
+###Do you need help?
+Sure! contact me on dothman@internews.org pgp: http://pgp.mit.edu/pks/lookup?op=get&search=0x432F2FA087E90308
+Or! @dlshadothman
+
+Good luck!
