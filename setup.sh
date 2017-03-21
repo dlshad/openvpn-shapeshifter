@@ -1,7 +1,8 @@
 #!/bin/bash
 # Shell installer of obfuscated OpenVPN via shapeshifter-dispatcher pluggable transport
 # This script will work on Debian and Ubuntu
-# Ability to enable obfuscation was added to the script to help users suffering from DPI censorship for more information https://pluggabletransports.info
+#This script works with TCP mode & Obfs2 if you need the UDP check https://github.com/dlshad/openvpn-install/setup_UDP.sh
+#Ability to enable obfuscation was added to the script to help users suffering from DPI censorship for more information https://pluggabletransports.info
 #Credits: To https://github.com/Nyr/openvpn-install for the orignal openvpn-install script and OperatorFoundation for the awesome shapeshifter-dispatcher.
 #By @dlshadothman https://github.com/dlshad 
 
