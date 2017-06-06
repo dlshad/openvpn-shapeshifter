@@ -82,7 +82,7 @@ if [[ "$IP" = "" ]]; then
 fi
 
 #Check if OpenVPN server and pluggabletransport are installed
-if [[ -f /etc/openvpn/server.conf && -f /usr/bin/go && -f /bin/shapeshifter-dispatcher ]] 
+if [[ -f /etc/openvpn/server.conf && -f /usr/bin/go && -f ~/go/bin/shapeshifter-dispatcher ]] 
 then
 		clear
 	while :
