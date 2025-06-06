@@ -560,5 +560,5 @@ verb 3" > /etc/openvpn/client-without-common.txt
 	echo "We already created a bash file for your client to run in order to setup and run openvpn-dispatcher you can find it here" ~/"$CLIENT.sh"
 	echo "If you want to add more clients, you simply need to run this script another time!"
 	echo "You have to install OpenVPN, Golang and shapeshifter-dispatcher on the client to be able to use it!"
-	echo "Then you have to run the followng command on the client side before establishing the openvpn connection:"
+	echo "Then you have to run the following command on the client side before establishing the openvpn connection:"
 	echo "~/go/bin/shapeshifter-dispatcher -client -transparent -ptversion 2 -transports obfs2 -state state -target $IP:$OBFSPORT"
