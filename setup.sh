@@ -7,31 +7,34 @@
 #By @dlshadothman https://github.com/dlshad 
 
 
-# Detect if the user is running the script with "sh" instead of bash
-if readlink /proc/$$/exe | grep -qs "dash"; then
-	echo "This script needs to be run with bash, not sh"
-	exit 1
-fi
+# Allow sourcing without running environment checks
+if [[ -z "$OPENVPN_SHAPESHIFTER_LIB" ]]; then
+    # Detect if the user is running the script with "sh" instead of bash
+    if readlink /proc/$$/exe | grep -qs "dash"; then
+            echo "This script needs to be run with bash, not sh"
+            exit 1
+    fi
 
-if [[ "$EUID" -ne 0 ]]; then
-	echo "Sorry, you need to run this as root"
-	exit 2
-fi
+    if [[ "$EUID" -ne 0 ]]; then
+            echo "Sorry, you need to run this as root"
+            exit 2
+    fi
 
-# Detect if the kernel supports TUN 
-if [[ ! -e /dev/net/tun ]]; then
-	echo "TUN is not available read more about it here https://crybit.com/how-to-enablecheck-tuntap-module-in-vpsopenvz/"
-	exit 3
-fi
+    # Detect if the kernel supports TUN
+    if [[ ! -e /dev/net/tun ]]; then
+            echo "TUN is not available read more about it here https://crybit.com/how-to-enablecheck-tuntap-module-in-vpsopenvz/"
+            exit 3
+    fi
 
-# Detect if the user running the script on Debian or Ubuntu 
-if [[ -e /etc/debian_version ]]; then
-	OS=debian
-	GROUPNAME=nogroup
-	RCLOCAL='/etc/rc.local'
-else
-	echo "Looks like you aren't running this installer on a Debian or Ubuntu system"
-	exit 5
+    # Detect if the user running the script on Debian or Ubuntu
+    if [[ -e /etc/debian_version ]]; then
+            OS=debian
+            GROUPNAME=nogroup
+            RCLOCAL='/etc/rc.local'
+    else
+            echo "Looks like you aren't running this installer on a Debian or Ubuntu system"
+            exit 5
+    fi
 fi
 
 # Generates custom CLIENT.ovpn file
@@ -53,11 +56,10 @@ newclient () {
 
 # Generates custom CLIENT-withoutobfs.ovpn file
 newclientwithout () {
-	cp /etc/openvpn/client-without-common.txt ~/$1-withoutobfs.ovpn
-	echo "<ca>" >> ~/$1-withoutobfs.ovpn
-	echo "<ca>" >> ~/$1-withoutobfs.ovpn
-	cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/$1-withoutobfs.ovpn
-	echo "</ca>" >> ~/$1-withoutobfs.ovpn
+        cp /etc/openvpn/client-without-common.txt ~/$1-withoutobfs.ovpn
+        echo "<ca>" >> ~/$1-withoutobfs.ovpn
+        cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/$1-withoutobfs.ovpn
+        echo "</ca>" >> ~/$1-withoutobfs.ovpn
 	echo "<cert>" >> ~/$1-withoutobfs.ovpn
 	cat /etc/openvpn/easy-rsa/pki/issued/$1.crt >> ~/$1-withoutobfs.ovpn
 	echo "</cert>" >> ~/$1-withoutobfs.ovpn
@@ -71,9 +73,14 @@ newclientwithout () {
 
 # Generates custom bash file installer for client CLIENT.sh
 newclientbash () {
-	cp /etc/openvpn/client-bash-common.txt ~/$1.sh
-	sed -i 's/clientvpnfile/'$CLIENT'/g' ~/$1.sh
+        cp /etc/openvpn/client-bash-common.txt ~/$1.sh
+        sed -i 's/clientvpnfile/'$CLIENT'/g' ~/$1.sh
 }
+
+# When sourced for tests, skip executing the installer
+if [[ "$OPENVPN_SHAPESHIFTER_LIB" = "1" ]]; then
+    return 0
+fi
 
 # Obtaining the public IP v4 address of the server 
 IP=$(ip addr | grep 'inet' | grep -v inet6 | grep -vE '127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | grep -o -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | head -1)

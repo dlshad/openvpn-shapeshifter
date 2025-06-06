@@ -35,3 +35,12 @@ Sure! contact me on dothman@internews.org pgp: http://pgp.mit.edu/pks/lookup?op=
 Or! @dlshadothman
 
 Good luck!
+
+### Testing
+
+Install [Bats](https://bats-core.readthedocs.io/) and run the test suite with:
+
+```bash
+bats tests
+```
+
