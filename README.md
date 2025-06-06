@@ -5,14 +5,14 @@ This script will automatically guide you to install and configure your OpenVPN s
 This setup will offer the users the freedom to choose between regular OpenVPN connection or obfuscated one, they actually
 can use both!  OpenVPN is the VPN provider, Dispatcher is the command line proxy tool which utilize Shapeshifter which is a protocol shapeshifting technology that will obfuscate the transformed data between the user and the server.
 
-###How this thing work?
+### How does this thing work?
 
 1- This is how OpenVPN works in uncensored network:
 ![OpenVPN_uncensored](/img/OpenVPN_no_DPI.png?raw=true "How OpenVPN works in uncensored network")
 2- This is how DPI filtering works:
-![OpenVPN_censored](/img/OpenVPN_with_DPI.png?raw=true "How how DPI filtering works")                                         
+![OpenVPN_censored](/img/OpenVPN_with_DPI.png?raw=true "How DPI filtering works")
 3- This is how openvpn-shapeshifter works in censored network:
-![openvpn-shapeshifter](/img/OpenVPN_Obfs.png?raw=true "How how DPI filtering works")
+![openvpn-shapeshifter](/img/OpenVPN_Obfs.png?raw=true "How DPI filtering works")
 
 ###Installation
 Run the following command in your Ubuntu or Debian server:
