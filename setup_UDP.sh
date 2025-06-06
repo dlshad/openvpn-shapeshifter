@@ -53,11 +53,10 @@ newclient () {
 
 # Generates custom CLIENT-withoutobfs.ovpn file
 newclientwithout () {
-	cp /etc/openvpn/client-without-common.txt ~/$1-withoutobfs.ovpn
-	echo "<ca>" >> ~/$1-withoutobfs.ovpn
-	echo "<ca>" >> ~/$1-withoutobfs.ovpn
-	cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/$1-withoutobfs.ovpn
-	echo "</ca>" >> ~/$1-withoutobfs.ovpn
+        cp /etc/openvpn/client-without-common.txt ~/$1-withoutobfs.ovpn
+        echo "<ca>" >> ~/$1-withoutobfs.ovpn
+        cat /etc/openvpn/easy-rsa/pki/ca.crt >> ~/$1-withoutobfs.ovpn
+        echo "</ca>" >> ~/$1-withoutobfs.ovpn
 	echo "<cert>" >> ~/$1-withoutobfs.ovpn
 	cat /etc/openvpn/easy-rsa/pki/issued/$1.crt >> ~/$1-withoutobfs.ovpn
 	echo "</cert>" >> ~/$1-withoutobfs.ovpn
